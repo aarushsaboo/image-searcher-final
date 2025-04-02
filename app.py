@@ -10,6 +10,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -106,18 +107,29 @@ def search():
 def download():
     url = request.form.get('url')
     query = request.form.get('query')
-    index = request.form.get('index')
     
-    if not all([url, query, index]):
+    if not all([url, query]):
         return jsonify({'error': 'Missing parameters'}), 400
     
     try:
         img = download_image(url)
         if img:
-            filename = f"{query.replace(' ', '_')}_{index}.jpg"
-            save_path = os.path.join("downloaded_images", filename)
-            img.save(save_path)
-            return jsonify({'success': True, 'filename': filename})
+            # Create a timestamp for the filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{query.replace(' ', '_')}_{timestamp}.jpg"
+            
+            # Save the image to a temporary BytesIO object
+            img_io = BytesIO()
+            img.save(img_io, 'JPEG')
+            img_io.seek(0)
+            
+            # Send the file to the user's browser
+            return send_file(
+                img_io,
+                mimetype='image/jpeg',
+                as_attachment=True,
+                download_name=filename
+            )
         return jsonify({'error': 'Failed to download image'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500

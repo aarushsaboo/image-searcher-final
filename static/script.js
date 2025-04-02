@@ -148,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function () {
       index + 1
     }" class="img-fluid">
                 <button class="btn btn-primary btn-sm download-btn" 
-                        onclick="downloadImage('${imageUrl}', '${query}', ${index})">
+                        onclick="downloadImage('${imageUrl}', '${query}')">
                     <i class="fas fa-download me-1"></i> Download
                 </button>
             </div>
@@ -206,25 +206,42 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  async function downloadImage(url, query, index) {
+  async function downloadImage(url, query) {
     try {
       const formData = new FormData()
       formData.append("url", url)
       formData.append("query", query)
-      formData.append("index", index)
 
       const response = await fetch("/download", {
         method: "POST",
         body: formData,
       })
 
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Download failed")
       }
 
-      showToast(`Image saved as ${data.filename}`)
+      // Get the filename from the Content-Disposition header
+      const contentDisposition = response.headers.get("Content-Disposition")
+      const filename = contentDisposition
+        ? contentDisposition.split("filename=")[1].replace(/"/g, "")
+        : `${query.replace(" ", "_")}.jpg`
+
+      // Create a blob from the response
+      const blob = await response.blob()
+
+      // Create a download link and trigger it
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = downloadUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(downloadUrl)
+
+      showToast(`Image downloaded as ${filename}`)
     } catch (error) {
       showToast(error.message, "danger")
     }
