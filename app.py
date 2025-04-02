@@ -114,6 +114,10 @@ def download():
     try:
         img = download_image(url)
         if img:
+            # Convert RGBA to RGB if necessary
+            if img.mode == 'RGBA':
+                img = img.convert('RGB')
+            
             # Create a timestamp for the filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{query.replace(' ', '_')}_{timestamp}.jpg"
